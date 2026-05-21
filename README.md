@@ -44,7 +44,8 @@ Frontend tamamen statik dosyalardan oluşur (HTML, CSS, JS).
 
 1. `frontend` klasörünün içine gidin.
 2. Herhangi bir derlemeye ihtiyaç yoktur. `index.html` dosyasını doğrudan bir web tarayıcısında (Chrome, Firefox vb.) açmanız yeterlidir.
-3. *Tavsiye:* Eğer VS Code kullanıyorsanız, "Live Server" eklentisiyle `index.html` dosyasını açmanız daha sağlıklı bir deneyim sunar.
+3. *Tavsiye:* Eğer VS Code kullanıyorsanız, "Live Server" veya benzeri bir eklentiyle projeyi başlatmanız daha sağlıklı bir deneyim sunar. 
+   *(Not: Live Server kullandığınızda arayüz genellikle `http://localhost:3000` veya `http://127.0.0.1:5500` üzerinde açılacaktır. Arayüzün sorunsuz çalışması için arka plandaki Python sunucusunun da 8000 portunda çalışır durumda olduğundan emin olun.)*
 
 ## 📌 Kullanım Senaryosu
 1. Uygulama açıldığında sol panelden **"Maliyet (Cost)"** veya **"Karbon Emisyonu (CO2)"** odaklı optimizasyon hedefini seçin.
