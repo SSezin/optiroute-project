@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lojistik Ağı Optimizasyon Aracı</title>
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="style.css?v=4">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar glass-panel">
+            <header>
+                <div style="display: flex; justify-content: center; align-items: center;">
+                    <div class="logo" style="display: flex; align-items: center; gap: 0;">
+                        <img src="logo.png" alt="Logo" style="height: 54px; object-fit: contain;">
+                        <h1 style="font-weight: 900; font-size: 2.2rem; letter-spacing: -0.05em; background: linear-gradient(135deg, var(--primary), var(--secondary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin: 0 0 0 -4px;">OptiRoute</h1>
+                    </div>
+                </div>
+                <p class="subtitle" style="margin-top: 0.5rem; padding-left: 0; text-align: center; font-style: italic; font-weight: 500; letter-spacing: 0.5px;">Dağıtımın En Zeki Hali</p>
+            </header>
+
+            <div class="controls-section">
+                <h3><i class="fa-solid fa-sliders"></i> Parametreler</h3>
+                
+                <div class="input-group">
+                    <label for="fuel-price" title="1 Litre yakıtın fiyatı">Yakıt Litre Fiyatı (₺/L):</label>
+                    <input type="number" id="fuel-price" value="40.0" step="0.5">
+                </div>
+                <div class="input-group">
+                    <label for="fuel-consumption" title="Kamyonun 100km'de harcadığı yakıt">Kamyon Yakıt Tük. (L/100km):</label>
+                    <input type="number" id="fuel-consumption" value="30" step="1">
+                </div>
+                <div class="input-group">
+                    <label for="toll-cost" title="Kilometre başına ortalama otoban ve köprü masrafı">Yol/Gişe Ücreti (₺/km):</label>
+                    <input type="number" id="toll-cost" value="2.5" step="0.1">
+                </div>
+                <div class="input-group">
+                    <label for="truck-capacity" title="Bir kamyonun taşıyabileceği maksimum ürün birimi">Kamyon Kapasitesi (Birim):</label>
+                    <input type="number" id="truck-capacity" value="100" step="10">
+                </div>
+
+                <div class="action-buttons">
+                    <button id="add-warehouse-btn" class="btn btn-secondary">
+                        <i class="fa-solid fa-warehouse"></i> Depo Ekle
+                    </button>
+                    <button id="add-retailer-btn" class="btn btn-secondary">
+                        <i class="fa-solid fa-store"></i> Bayi Ekle
+                    </button>
+                </div>
+
+                <div class="input-group" style="margin-bottom: 1.5rem; margin-top: 1.5rem;">
+                    <label><i class="fa-solid fa-bullseye"></i> Optimizasyon Hedefi:</label>
+                    <select id="optimization-objective" style="width: 100%; padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid var(--panel-border); background: var(--element-bg); color: var(--text-main); font-family: inherit; font-size: 1rem; cursor: pointer; transition: 0.3s border-color;">
+                        <option value="cost">Maliyeti Minimize Et</option>
+                        <option value="co2">Karbon Ayak İzini Minimize Et</option>
+                    </select>
+                </div>
+
+                <div class="run-section">
+                    <button id="optimize-btn" class="btn btn-primary pulse">
+                        <i class="fa-solid fa-bolt"></i> Ağı Optimize Et
+                    </button>
+                </div>
+            </div>
+
+        </aside>
+        
+        <!-- Results Panel Right -->
+        <aside class="results-sidebar glass-panel hidden" id="results-panel">
+            <h3><i class="fa-solid fa-chart-pie"></i> Sonuçlar</h3>
+            
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <span class="stat-label">Toplam Maliyet</span>
+                    <span class="stat-value highlight" id="total-cost">0 ₺</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">Açılan Depo</span>
+                    <span class="stat-value" id="opened-warehouses">0</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">Taşıma Maliyeti</span>
+                    <span class="stat-value" id="transport-cost">0 ₺</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">Sabit Maliyet</span>
+                    <span class="stat-value" id="fixed-cost">0 ₺</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">Toplam CO2</span>
+                    <span class="stat-value" id="total-co2" style="color: var(--success);">0 kg</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">Karbon Telafisi</span>
+                    <span class="stat-value" id="trees-needed" style="color: var(--success);">0</span>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <canvas id="costChart"></canvas>
+            </div>
+
+            <div class="assignments-list-container" style="margin-top: 1.5rem;">
+                <h4><i class="fa-solid fa-route"></i> Rota Analizi (Maliyet & Mesafe)</h4>
+                <ul id="assignments-list" class="assignments-list">
+                    <!-- Items via JS -->
+                </ul>
+            </div>
+        </aside>
+
+        <div class="loading-overlay hidden" id="loading">
+                <div class="spinner"></div>
+                <p>Hesaplanıyor...</p>
+            </div>
+
+        <!-- Main Content (Map) -->
+        <main class="map-container">
+            <div id="map"></div>
+            
+            <div class="legend glass-panel">
+                <ul>
+                    <li><span class="legend-dot warehouse"></span> Potansiyel Depo</li>
+                    <li><span class="legend-dot warehouse-open"></span> Açılan Depo</li>
+                    <li><span class="legend-dot retailer"></span> Perakende Noktası</li>
+                    <li><span class="legend-line"></span> Taşıma Rotası</li>
+                </ul>
+            </div>
+        </main>
+
+        <!-- Floating Theme Toggle -->
+        <button id="theme-toggle" class="theme-float-btn glass-panel" title="Temayı Değiştir">
+            <i class="fa-solid fa-sun" style="color: var(--primary);"></i>
+        </button>
+    </div>
+
+    <!-- Modals for adding nodes -->
+    <div id="node-modal" class="modal hidden">
+        <div class="modal-content glass-panel">
+            <h2 id="modal-title">Yeni Nokta Ekle</h2>
+            <p>Haritada bir konuma tıklayın veya değerleri girin.</p>
+            
+            <div class="form-group">
+                <label>İsim:</label>
+                <input type="text" id="node-name" placeholder="Örn: Depo 1">
+            </div>
+            
+            <div class="form-group">
+                <label>Enlem / Boylam:</label>
+                <div class="coord-inputs">
+                    <input type="number" id="node-lat" placeholder="Enlem" readonly>
+                    <input type="number" id="node-lng" placeholder="Boylam" readonly>
+                </div>
+            </div>
+
+            <div class="form-group" id="capacity-group">
+                <label>Kapasite (Birim):</label>
+                <input type="number" id="node-capacity" value="1000">
+            </div>
+            
+            <div class="form-group" id="fixed-cost-group">
+                <label>Kurulum Sabit Maliyeti (₺):</label>
+                <input type="number" id="node-fixed-cost" value="50000">
+            </div>
+
+            <div class="form-group" id="forced-open-group">
+                <label>Depo Durumu:</label>
+                <select id="node-status" style="width: 100%; padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid var(--panel-border); background: var(--element-bg); color: var(--text-main); font-family: inherit; font-size: 1rem; cursor: pointer;">
+                    <option value="auto">Otomatik (Algoritma Karar Verir)</option>
+                    <option value="open">Zorunlu Açık (Kesin Kullanılacak)</option>
+                    <option value="closed">Zorunlu Kapalı (Asla Kullanılmayacak)</option>
+                </select>
+            </div>
+
+            <div class="form-group hidden" id="demand-group">
+                <label>Talep (Birim):</label>
+                <input type="number" id="node-demand" value="200">
+            </div>
+
+            <div class="modal-actions">
+                <button id="cancel-node" class="btn btn-text">İptal</button>
+                <button id="save-node" class="btn btn-primary">Kaydet</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Error Modal -->
+    <div id="error-modal" class="modal hidden">
+        <div class="modal-content glass-panel" style="text-align: center; max-width: 400px;">
+            <div style="font-size: 3.5rem; color: var(--danger); margin-bottom: 1rem;">
+                <i class="fa-solid fa-circle-exclamation"></i>
+            </div>
+            <h2 style="color: var(--text-main); margin-bottom: 0.5rem;">Optimizasyon Başarısız</h2>
+            <p id="error-message" style="margin-bottom: 1.5rem; color: var(--text-muted); line-height: 1.5;">Bir hata oluştu.</p>
+            
+            <div class="modal-actions" style="justify-content: center; margin-top: 1.5rem;">
+                <button id="close-error-modal" class="btn btn-primary" style="background: linear-gradient(135deg, var(--danger), #d90429); box-shadow: 0 4px 15px rgba(239, 71, 111, 0.4);">Tamam</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Custom JS -->
+    <script src="script.js?v=2"></script>
+</body>
+</html>
